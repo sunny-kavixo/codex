@@ -315,7 +315,11 @@ fn activity_metadata_is_retained_without_including_outputs() -> color_eyre::Resu
             {"type": "fileChange", "id": "patch-1", "status": "completed",
                 "changes": [{"path": "src/main.rs", "kind": {"type": "add"}, "diff": "+hello"}]},
             {"type": "mcpToolCall", "id": "mcp-1", "server": "docs", "tool": "search",
-                "status": "completed", "arguments": {}},
+                "status": "completed", "arguments": {}, "result": {
+                    "content": [{"type": "text", "text": "Synthetic MCP output"}],
+                    "structuredContent": {"answer": "structured"},
+                    "_meta": {"source": "test"}
+                }},
             {"type": "userMessage", "id": "user-1", "content": [
                 {"type": "text", "text": delegated_prompt("source-1", "Check <main> & status")},
                 {"type": "skill", "name": "debug", "path": "/tmp/SKILL.md"},
@@ -380,6 +384,20 @@ fn activity_metadata_is_retained_without_including_outputs() -> color_eyre::Resu
         full["items"][2]["changes"][0]["diff"],
         json!({"text": "+hello", "truncated": false})
     );
+    let mcp_result: Value = serde_json::from_str(
+        full["items"][3]["result"]["text"]
+            .as_str()
+            .expect("MCP result text"),
+    )?;
+    assert_eq!(
+        mcp_result,
+        json!({
+            "content": [{"type": "text", "text": "Synthetic MCP output"}],
+            "structuredContent": {"answer": "structured"},
+            "_meta": {"source": "test"}
+        })
+    );
+    assert_eq!(full["items"][3]["result"]["truncated"], false);
     assert_eq!(
         full["items"][8]["result"],
         json!({"text": "image bytes", "truncated": false})
@@ -393,6 +411,8 @@ fn activity_metadata_is_retained_without_including_outputs() -> color_eyre::Resu
         no_outputs["items"][1]["output"],
         json!({"text": "", "truncated": true, "originalChars": 14})
     );
+    assert_eq!(no_outputs["items"][3]["result"]["text"], "");
+    assert_eq!(no_outputs["items"][3]["result"]["truncated"], true);
     assert_eq!(
         no_outputs["items"][8]["result"],
         json!({"text": "", "truncated": true, "originalChars": 11})

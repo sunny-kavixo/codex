@@ -17,6 +17,7 @@ use codex_app_server_protocol::GeneratedImageRef;
 use codex_app_server_protocol::GetAccountParams;
 use codex_app_server_protocol::GetAccountResponse;
 use codex_app_server_protocol::ImageReference;
+use codex_app_server_protocol::McpToolCallResult;
 use codex_app_server_protocol::ModelListParams;
 use codex_app_server_protocol::ModelListResponse;
 use codex_app_server_protocol::RequestId;
@@ -1489,12 +1490,27 @@ fn turn_summary(turn: &Turn, include_outputs: bool, output_chars: usize) -> Valu
                 tool,
                 status,
                 arguments,
+                result,
+                error,
                 duration_ms,
                 ..
-            } => json!({
-                "type": "mcpToolCall", "id": id, "server": server, "tool": tool,
-                "arguments": arguments, "status": status, "durationMs": duration_ms
-            }),
+            } => {
+                let mut item = json!({
+                    "type": "mcpToolCall", "id": id, "server": server, "tool": tool,
+                    "arguments": arguments, "status": status, "durationMs": duration_ms
+                });
+                if include_outputs {
+                    if let Some(result) = result {
+                        item["result"] = mcp_result_summary(result, output_chars);
+                    }
+                    if let Some(error) = error {
+                        item["error"] = json!({
+                            "message": output_summary(&error.message, output_chars)
+                        });
+                    }
+                }
+                item
+            }
             ThreadItem::DynamicToolCall {
                 id,
                 namespace,
@@ -1601,6 +1617,11 @@ fn output_summary(text: &str, limit: usize) -> Value {
             "originalChars": original_chars
         })
     }
+}
+
+fn mcp_result_summary(result: &McpToolCallResult, limit: usize) -> Value {
+    let text = serde_json::to_string(result).expect("MCP result should serialize");
+    output_summary(&text, limit)
 }
 
 fn truncate(text: &str, limit: usize) -> String {
