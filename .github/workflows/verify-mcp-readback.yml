@@ -26,7 +26,6 @@ jobs:
     env:
       CARGO_BUILD_JOBS: 2
       CARGO_INCREMENTAL: 0
-      CARGO_TARGET_DIR: ${{ runner.temp }}/codex-target
     steps:
       - name: Check out the verification branch
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -55,6 +54,7 @@ jobs:
         shell: bash
         run: |
           set +e
+          export CARGO_TARGET_DIR="$RUNNER_TEMP/codex-target"
           log_file="$RUNNER_TEMP/mcp-readback-test.log"
           cargo test -p codex-tui activity_metadata_is_retained_without_including_outputs --lib 2>&1 | tee "$log_file"
           exit_code=${PIPESTATUS[0]}
